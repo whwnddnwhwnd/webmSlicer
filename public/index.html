@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>프레임 슬라이서</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <h1>프레임 슬라이서</h1>
+  <label class="filebtn">
+    영상 선택
+    <input type="file" id="fileInput" accept="video/*">
+  </label>
+  <div class="meta" id="fileMeta"></div>
+</header>
+
+<main>
+  <div class="notice" id="notice" hidden></div>
+
+  <section class="empty" id="empty">
+    <p>영상 파일을 선택하세요.</p>
+    <p class="sub">최대 500MB · webm / mp4 / mov 등 브라우저가 재생 가능한 형식</p>
+  </section>
+
+  <section class="player-section" id="playerSection" hidden>
+    <video id="player" controls playsinline></video>
+  </section>
+
+  <section class="controls" id="controls" hidden>
+    <div class="presets">
+      <span class="ctl-label">프레임 수</span>
+      <div class="preset-group" id="presetGroup"></div>
+      <span class="interval" id="intervalText"></span>
+    </div>
+    <div class="progress-row">
+      <div class="bar"><div class="bar-fill" id="barFill"></div></div>
+      <span class="progress-text" id="progressText"></span>
+      <button class="cancel" id="cancelBtn" hidden>취소</button>
+    </div>
+  </section>
+
+  <section id="gridSection" hidden>
+    <div class="grid" id="grid"></div>
+  </section>
+</main>
+
+<!--
+  캡처 전용 비디오. 사용자가 보는 플레이어와 분리되어 있어
+  seek 을 100번 때려도 상단 재생이 방해받지 않는다.
+  display:none 대신 화면 밖 배치 — 숨긴 비디오는 브라우저가 디코딩을 throttle 할 수 있다.
+-->
+<video id="capture" class="offscreen" muted playsinline preload="auto"></video>
+<canvas id="fullCanvas" class="offscreen"></canvas>
+<canvas id="thumbCanvas" class="offscreen"></canvas>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-backdrop" id="modalBackdrop"></div>
+  <div class="modal-body">
+    <div class="modal-head">
+      <div>
+        <span class="modal-slot" id="modalSlot"></span>
+        <span class="modal-time" id="modalTime"></span>
+      </div>
+      <div class="modal-actions">
+        <button id="analyzeBtn">AI 분석</button>
+        <button id="saveBtn" class="ghost">이 프레임 저장</button>
+        <button id="closeBtn" class="ghost">닫기</button>
+      </div>
+    </div>
+    <img id="modalImg" alt="">
+  </div>
+</div>
+
+<script src="app.js" type="module"></script>
+</body>
+</html>
