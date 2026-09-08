@@ -39,14 +39,19 @@ Vercel 은 상시 실행 서버가 없어 `server.js` 의 `app.listen()` 이 호
 클라이언트 코드는 로컬과 배포에서 동일하다.
 
 ```
-로컬   브라우저 → /api/analyze → server.js        → Azure
-Vercel 브라우저 → /api/analyze → api/analyze.js   → Azure
+로컬   브라우저 → /api/analyze → server.js       ┐
+                                                ├→ lib/azure-proxy.js → Azure
+Vercel 브라우저 → /api/analyze → api/analyze.js  ┘
 ```
 
+중계 로직은 `lib/azure-proxy.js` 하나에 두고 양쪽이 공유한다. 두 벌로 두면 한쪽만
+고쳐져 갈라지기 때문이다.
+
 1. Vercel 에서 이 저장소를 import (Framework Preset: **Other**)
-2. **Environment Variables** 에 두 개를 등록한다
-   - `AZURE_ENDPOINT`
-   - `AZURE_API_KEY`
+2. **Environment Variables** 를 등록한다
+   - `AZURE_ENDPOINT` (필수)
+   - `AZURE_API_KEY` (필수)
+   - `ACCESS_CODE` (선택 — 공개 URL 이라면 권장. 아래 참조)
 3. Deploy
 
 배포 후 루트가 404 라면 프로젝트 설정의 **Output Directory** 가 `public` 인지 확인한다
@@ -58,9 +63,15 @@ Vercel 브라우저 → /api/analyze → api/analyze.js   → Azure
 통째로 내려간다. `false` 로 두고 거기에 키를 적으면, 배포 URL 을 여는 누구나 개발자도구로
 키를 그대로 가져갈 수 있다. `.gitignore` 로도 막을 수 없다 — 앱 본체 파일이기 때문이다.
 
-**`/api/analyze` 는 인증이 없다.** URL 을 아는 사람은 누구나 호출할 수 있고, 그만큼 Azure
-쿼터가 소모된다. 공개 배포로 오래 둘 거라면 Azure 쪽에 낮은 TPM 한도를 걸거나,
-Vercel 의 Deployment Protection 을 켜거나, 함수에 공유 토큰 검사를 추가한다.
+**공개 URL 이라면 `ACCESS_CODE` 를 설정한다.** 설정하지 않으면 `/api/analyze` 는 무인증이라
+URL 을 아는 사람 누구나 호출할 수 있고, 그만큼 Azure 쿼터가 소모된다.
+
+`ACCESS_CODE` 환경 변수를 넣으면 그 값을 헤더로 보낸 요청만 통과한다. 앱은 401 을 받으면
+코드를 한 번 물어보고 재시도하며, 맞으면 그 탭의 `sessionStorage` 에 담아 다시 묻지 않는다.
+**코드는 소스에 두지 않는다** — `public/` 은 정적 파일이라 소스에 박힌 값은 방문자에게
+그대로 내려가 게이트 역할을 못 하기 때문이다.
+
+변수를 비워 두면 게이트 자체가 없다. 로컬 개발과 최초 배포가 설정 없이도 동작한다.
 
 ### 함수 실행 시간
 

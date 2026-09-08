@@ -500,6 +500,34 @@ function setAnalyzing(on) {
   els.analyzeBtn.textContent = on ? '분석 중…' : 'AI 분석';
 }
 
+// 서버에 ACCESS_CODE 가 설정돼 있으면 401 + ACCESS_CODE_REQUIRED 로 답한다.
+// 코드를 이 파일에 두지 않는 것이 핵심이다 — public/ 은 정적 파일이라 방문자에게
+// 그대로 내려가므로, 소스에 박힌 코드는 게이트 역할을 전혀 못 한다.
+// 사용자가 입력한 값을 그 탭의 sessionStorage 에만 담는다.
+function getAccessCode() {
+  try { return sessionStorage.getItem('accessCode') || ''; } catch { return ''; }
+}
+function setAccessCode(value) {
+  try {
+    if (value) sessionStorage.setItem('accessCode', value);
+    else sessionStorage.removeItem('accessCode');
+  } catch { /* 시크릿 모드 등에서 접근이 막힐 수 있다 */ }
+}
+
+function postAnalyze(payload) {
+  if (!USE_PROXY) {
+    return fetch(AZURE_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'api-key': AZURE_API_KEY },
+      body: JSON.stringify(payload),
+    });
+  }
+  const headers = { 'Content-Type': 'application/json' };
+  const code = getAccessCode();
+  if (code) headers['x-access-code'] = code;
+  return fetch('/api/analyze', { method: 'POST', headers, body: JSON.stringify(payload) });
+}
+
 // 캡처해 둔 blob URL 을 다시 읽어 data URL 로 바꾼다.
 // Azure OpenAI 는 이미지를 base64 data URL 로 받으므로 바이너리 그대로는 못 보낸다.
 async function blobUrlToDataUrl(blobUrl) {
@@ -593,19 +621,27 @@ async function analyzeCurrentFrame() {
       max_tokens: MAX_TOKENS,
     };
 
-    const res = USE_PROXY
-      ? await fetch('/api/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        })
-      : await fetch(AZURE_ENDPOINT, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'api-key': AZURE_API_KEY },
-          body: JSON.stringify(payload),
-        });
+    let res = await postAnalyze(payload);
+    let raw = await res.text();
 
-    const raw = await res.text();
+    // 접근 코드를 요구하면 한 번만 물어보고 재시도한다.
+    const needsCode = (r, body) => r.status === 401 && body.includes('ACCESS_CODE_REQUIRED');
+    if (needsCode(res, raw)) {
+      const entered = prompt('이 서버는 접근 코드가 필요합니다.');
+      if (!entered) {
+        console.warn('[AI 분석] 접근 코드 입력이 취소되었습니다.');
+        return;
+      }
+      setAccessCode(entered);
+      res = await postAnalyze(payload);
+      raw = await res.text();
+      if (needsCode(res, raw)) {
+        setAccessCode('');  // 틀린 코드를 남겨두면 다음 시도에서 다시 물어보지 못한다
+        alert('접근 코드가 올바르지 않습니다.');
+        return;
+      }
+    }
+
     let json = null;
     try { json = JSON.parse(raw); } catch { /* 본문이 JSON 이 아닐 수 있다 */ }
 
