@@ -6,8 +6,5 @@
   "description": "동영상을 균등 간격으로 잘라 프레임 그리드로 보여주는 한 페이지 웹 도구",
   "scripts": {
     "start": "node server.js"
-  },
-  "dependencies": {
-    "express": "^5.1.0"
   }
 }

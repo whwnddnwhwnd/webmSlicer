@@ -54,8 +54,12 @@ Vercel 브라우저 → /api/analyze → api/analyze.js  ┘
    - `ACCESS_CODE` (선택 — 공개 URL 이라면 권장. 아래 참조)
 3. Deploy
 
-배포 후 루트가 404 라면 프로젝트 설정의 **Output Directory** 가 `public` 인지 확인한다
-(`vercel.json` 에 명시해 두었다).
+`vercel.json` 이 `framework: null`(프레임워크 감지 끔)과 `outputDirectory: public` 을
+명시하므로 대시보드에서 따로 만질 것은 없다. 배포 후 루트가 404 라면 프로젝트 설정의
+**Output Directory** 가 `public` 인지 확인한다.
+
+> 저장소가 비공개면 Vercel 의 Import 목록에 뜨지 않는다. Import 화면의
+> **Configure GitHub App** 에서 해당 저장소 접근을 허용해야 한다.
 
 ### 배포 시 반드시 지킬 것
 
@@ -115,7 +119,13 @@ alert 은 `분석 실패 (404)` 정도로 짧게 뜨고, 원인과 원본 응답
 `URL.createObjectURL(file)` 은 파일을 메모리로 읽는 게 아니라 디스크상의 파일을 가리키는
 참조라, 500MB 든 그 이상이든 메모리 점유가 비슷하다.
 
-서버(`server.js`)는 정적 파일 서빙만 한다. ffmpeg 설치가 필요 없고 서버 CPU·디스크를 쓰지 않는다.
+서버(`server.js`)는 정적 파일 서빙과 `/api/analyze` 중계만 한다. ffmpeg 설치가 필요 없고
+영상 처리에 서버 CPU·디스크를 쓰지 않는다.
+
+**의존성이 없다.** Node 내장 `http` 만 쓴다. `express` 를 넣으면 Vercel 이 이 프로젝트를
+"Express 서버 앱"으로 판단해 서버 엔트리포인트를 찾다가 빌드가 실패한다
+(`No entrypoint found which imports express`). 우리가 Vercel 에서 원하는 것은
+정적 파일 + 서버리스 함수이지 상시 실행 서버가 아니다.
 
 > `file://` 로 직접 열지 않고 굳이 Express 를 두는 이유: `file://` 오리진에서는 비디오를 그린
 > 캔버스가 오염(taint)되어 이미지 추출이 막힐 수 있다. `http://localhost` 로 서빙하면
