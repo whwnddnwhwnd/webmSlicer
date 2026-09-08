@@ -12,6 +12,16 @@
 //  Azure OpenAI 설정 — 여기만 채우면 된다
 // ══════════════════════════════════════════════════════════════════════════
 
+// 호출 경로. true 면 같은 오리진의 /api/analyze 를 거친다
+// (로컬은 server.js, Vercel 은 api/analyze.js — 경로가 같아 코드 변경이 없다).
+//
+// ⚠ 배포한다면 반드시 true 여야 한다.
+//    이 파일은 정적 파일이라 브라우저에 통째로 내려간다. false 로 두고 아래 상수에
+//    키를 채우면, 배포 URL 을 여는 누구나 개발자도구로 키를 그대로 가져갈 수 있다.
+//    true 일 때 키는 서버 환경 변수에만 있고 이 파일에는 존재하지 않는다.
+const USE_PROXY = true;
+
+// 아래 두 상수는 USE_PROXY 가 false 일 때만 쓰인다 (= 로컬 전용).
 // 전체 URL 을 그대로 붙여넣는다 (api-version 쿼리까지 포함).
 //   https://<리소스>.openai.azure.com/openai/deployments/<배포이름>/chat/completions?api-version=2024-10-21
 const AZURE_ENDPOINT = '';
@@ -20,11 +30,6 @@ const AZURE_API_KEY = '';
 
 // GPT 에 보낼 질문. 결과를 alert 로 띄우므로 길이를 제한해 두는 편이 좋다.
 const PROMPT = '이 이미지에 무엇이 보이는지 한국어로 3문장 이내로 설명해줘.';
-
-// Azure OpenAI 는 기본적으로 브라우저 직접 호출(CORS)을 허용하지 않는다.
-// "분석 실패 (상태코드 없음)" 이 뜨면 CORS 차단이므로 아래를 true 로 바꾸고
-// server.js 상단의 AZURE_ENDPOINT / AZURE_API_KEY 를 채우면 된다.
-const USE_PROXY = false;
 
 const MAX_TOKENS = 300;
 

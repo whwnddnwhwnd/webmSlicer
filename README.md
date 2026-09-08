@@ -17,15 +17,55 @@ npm start          # http://localhost:3000
 
 ## Azure OpenAI 설정
 
-`public/app.js` 맨 위 상수 두 개만 채우면 된다.
+기본값은 `USE_PROXY = true` 다. 브라우저는 같은 오리진의 `/api/analyze` 로 보내고,
+키는 서버 환경 변수에만 존재한다.
 
-```js
-const AZURE_ENDPOINT = '';   // https://<리소스>.openai.azure.com/openai/deployments/<배포이름>/chat/completions?api-version=2024-10-21
-const AZURE_API_KEY  = '';
-const PROMPT = '이 이미지에 무엇이 보이는지 한국어로 3문장 이내로 설명해줘.';
+```bash
+cp .env.example .env          # AZURE_ENDPOINT / AZURE_API_KEY 를 채운다
+node --env-file=.env server.js
 ```
 
-비워 둔 채 [AI 분석]을 누르면 호출하지 않고 안내만 띄운다.
+`public/app.js` 의 `PROMPT` 로 질문을 바꾼다.
+설정이 비어 있으면 호출하지 않고 안내만 띄운다.
+
+로컬에서 서버를 거치지 않고 시험해 보려면 `USE_PROXY` 를 `false` 로 바꾸고
+`public/app.js` 의 `AZURE_ENDPOINT` / `AZURE_API_KEY` 를 채운다.
+**단 이 상태로는 절대 배포하면 안 된다** — 아래 참조.
+
+## Vercel 배포
+
+Vercel 은 상시 실행 서버가 없어 `server.js` 의 `app.listen()` 이 호출되지 않는다.
+대신 `api/analyze.js` 가 서버리스 함수로 잡힌다. 경로가 `/api/analyze` 로 같아서
+클라이언트 코드는 로컬과 배포에서 동일하다.
+
+```
+로컬   브라우저 → /api/analyze → server.js        → Azure
+Vercel 브라우저 → /api/analyze → api/analyze.js   → Azure
+```
+
+1. Vercel 에서 이 저장소를 import (Framework Preset: **Other**)
+2. **Environment Variables** 에 두 개를 등록한다
+   - `AZURE_ENDPOINT`
+   - `AZURE_API_KEY`
+3. Deploy
+
+배포 후 루트가 404 라면 프로젝트 설정의 **Output Directory** 가 `public` 인지 확인한다
+(`vercel.json` 에 명시해 두었다).
+
+### 배포 시 반드시 지킬 것
+
+**`USE_PROXY` 는 반드시 `true` 여야 한다.** `public/app.js` 는 정적 파일이라 브라우저에
+통째로 내려간다. `false` 로 두고 거기에 키를 적으면, 배포 URL 을 여는 누구나 개발자도구로
+키를 그대로 가져갈 수 있다. `.gitignore` 로도 막을 수 없다 — 앱 본체 파일이기 때문이다.
+
+**`/api/analyze` 는 인증이 없다.** URL 을 아는 사람은 누구나 호출할 수 있고, 그만큼 Azure
+쿼터가 소모된다. 공개 배포로 오래 둘 거라면 Azure 쪽에 낮은 TPM 한도를 걸거나,
+Vercel 의 Deployment Protection 을 켜거나, 함수에 공유 토큰 검사를 추가한다.
+
+### 함수 실행 시간
+
+GPT-4o 비전 호출은 응답까지 5~15초가 걸린다. Vercel 함수 기본 타임아웃(10초)으로는
+부족할 수 있어 `vercel.json` 에서 `maxDuration` 을 60초로 올려 두었다.
 
 ### CORS 에 막히면
 
